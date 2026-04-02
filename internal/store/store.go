@@ -23,5 +23,27 @@ func now()string{return time.Now().UTC().Format(time.RFC3339)}
 func(d *DB)Create(e *Pipeline)error{e.ID=genID();e.CreatedAt=now();_,err:=d.db.Exec(`INSERT INTO pipelines(id,name,source,destination,steps,schedule,status,last_run_at,run_count,fail_count,created_at)VALUES(?,?,?,?,?,?,?,?,?,?,?)`,e.ID,e.Name,e.Source,e.Destination,e.Steps,e.Schedule,e.Status,e.LastRunAt,e.RunCount,e.FailCount,e.CreatedAt);return err}
 func(d *DB)Get(id string)*Pipeline{var e Pipeline;if d.db.QueryRow(`SELECT id,name,source,destination,steps,schedule,status,last_run_at,run_count,fail_count,created_at FROM pipelines WHERE id=?`,id).Scan(&e.ID,&e.Name,&e.Source,&e.Destination,&e.Steps,&e.Schedule,&e.Status,&e.LastRunAt,&e.RunCount,&e.FailCount,&e.CreatedAt)!=nil{return nil};return &e}
 func(d *DB)List()[]Pipeline{rows,_:=d.db.Query(`SELECT id,name,source,destination,steps,schedule,status,last_run_at,run_count,fail_count,created_at FROM pipelines ORDER BY created_at DESC`);if rows==nil{return nil};defer rows.Close();var o []Pipeline;for rows.Next(){var e Pipeline;rows.Scan(&e.ID,&e.Name,&e.Source,&e.Destination,&e.Steps,&e.Schedule,&e.Status,&e.LastRunAt,&e.RunCount,&e.FailCount,&e.CreatedAt);o=append(o,e)};return o}
+func(d *DB)Update(e *Pipeline)error{_,err:=d.db.Exec(`UPDATE pipelines SET name=?,source=?,destination=?,steps=?,schedule=?,status=?,last_run_at=?,run_count=?,fail_count=? WHERE id=?`,e.Name,e.Source,e.Destination,e.Steps,e.Schedule,e.Status,e.LastRunAt,e.RunCount,e.FailCount,e.ID);return err}
 func(d *DB)Delete(id string)error{_,err:=d.db.Exec(`DELETE FROM pipelines WHERE id=?`,id);return err}
 func(d *DB)Count()int{var n int;d.db.QueryRow(`SELECT COUNT(*) FROM pipelines`).Scan(&n);return n}
+
+func(d *DB)Search(q string, filters map[string]string)[]Pipeline{
+    where:="1=1"
+    args:=[]any{}
+    if q!=""{
+        where+=" AND (name LIKE ?)"
+        args=append(args,"%"+q+"%");
+    }
+    if v,ok:=filters["source"];ok&&v!=""{where+=" AND source=?";args=append(args,v)}
+    if v,ok:=filters["status"];ok&&v!=""{where+=" AND status=?";args=append(args,v)}
+    rows,_:=d.db.Query(`SELECT id,name,source,destination,steps,schedule,status,last_run_at,run_count,fail_count,created_at FROM pipelines WHERE `+where+` ORDER BY created_at DESC`,args...)
+    if rows==nil{return nil};defer rows.Close()
+    var o []Pipeline;for rows.Next(){var e Pipeline;rows.Scan(&e.ID,&e.Name,&e.Source,&e.Destination,&e.Steps,&e.Schedule,&e.Status,&e.LastRunAt,&e.RunCount,&e.FailCount,&e.CreatedAt);o=append(o,e)};return o
+}
+
+func(d *DB)Stats()map[string]any{
+    m:=map[string]any{"total":d.Count()}
+    rows,_:=d.db.Query(`SELECT status,COUNT(*) FROM pipelines GROUP BY status`)
+    if rows!=nil{defer rows.Close();by:=map[string]int{};for rows.Next(){var s string;var c int;rows.Scan(&s,&c);by[s]=c};m["by_status"]=by}
+    return m
+}
