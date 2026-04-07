@@ -1,27 +1,396 @@
 package server
+
 import "net/http"
-func(s *Server)dashboard(w http.ResponseWriter,r *http.Request){w.Header().Set("Content-Type","text/html; charset=utf-8");w.Write([]byte(dashHTML))}
-const dashHTML=`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Windmill</title>
-<style>:root{--bg:#1a1410;--bg2:#241e18;--bg3:#2e261e;--rust:#c45d2c;--rl:#e8753a;--leather:#a0845c;--cream:#f0e6d3;--cm:#7a7060;--gold:#d4a843;--green:#4a9e5c;--mono:'JetBrains Mono',Consolas,monospace;--serif:'Libre Baskerville',Georgia,serif}*{margin:0;padding:0;box-sizing:border-box}body{background:var(--bg);color:var(--cream);font-family:var(--mono);font-size:13px;line-height:1.6}.hdr{padding:.6rem 1.2rem;border-bottom:1px solid var(--bg3);display:flex;justify-content:space-between;align-items:center}.hdr h1{font-family:var(--serif);font-size:1rem}.hdr h1 span{color:var(--rl)}.sub{font-size:.65rem;color:var(--cm)}.main{max-width:700px;margin:0 auto;padding:1rem}.search{width:100%;background:var(--bg2);border:1px solid var(--bg3);color:var(--cream);padding:.4rem .6rem;font-family:var(--mono);font-size:.78rem;margin-bottom:.6rem;outline:none}.search:focus{border-color:var(--rust)}.stats{display:flex;gap:1rem;margin-bottom:.8rem;flex-wrap:wrap}.stat{text-align:center}.stat-n{font-size:1.2rem;color:var(--rl);font-family:var(--serif)}.stat-l{font-size:.55rem;color:var(--cm);text-transform:uppercase;letter-spacing:1px}.btn{font-family:var(--mono);font-size:.68rem;padding:.3rem .6rem;border:1px solid;cursor:pointer;background:transparent}.btn-p{border-color:var(--rust);color:var(--rl)}.btn-p:hover{background:var(--rust);color:var(--cream)}.item{background:var(--bg2);border:1px solid var(--bg3);padding:.6rem;margin-bottom:.3rem;cursor:pointer;transition:border-color .15s}.item:hover{border-color:var(--leather)}.item h3{font-size:.82rem;margin-bottom:.15rem}.item-meta{font-size:.65rem;color:var(--cm);display:flex;gap:.5rem;flex-wrap:wrap}.empty{text-align:center;padding:2rem;color:var(--cm);font-style:italic;font-family:var(--serif)}.modal-bg{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:100}.modal{background:var(--bg2);border:1px solid var(--bg3);padding:1.5rem;width:90%;max-width:500px;max-height:90vh;overflow-y:auto}.modal h2{font-family:var(--serif);font-size:.9rem;margin-bottom:1rem}label.fl{display:block;font-size:.65rem;color:var(--leather);text-transform:uppercase;letter-spacing:1px;margin-bottom:.2rem;margin-top:.5rem}input[type=text],input[type=number]{background:var(--bg);border:1px solid var(--bg3);color:var(--cream);padding:.35rem .5rem;font-family:var(--mono);font-size:.78rem;width:100%;outline:none}.del{color:var(--cm);cursor:pointer;font-size:.65rem;float:right}.del:hover{color:var(--rust)}</style></head>
-<body><div class="hdr"><div><h1><span>Stockyard</span> Windmill</h1><div class="sub">Self-hosted data pipeline visualizer</div></div><button class="btn btn-p" onclick="showModal()">+ New</button></div>
-<div class="main"><div id="upgrade-banner" style="display:none;background:#241e18;border:1px solid #8b3d1a;border-left:3px solid #c45d2c;padding:.6rem 1rem;font-size:.78rem;color:#bfb5a3;margin-bottom:.8rem"><strong style="color:#f0e6d3">Free tier</strong> — 10 items max. <a href="https://stockyard.dev/windmill/" target="_blank" style="color:#e8753a">Upgrade to Pro →</a></div><div class="stats" id="stats"></div>
-<input class="search" id="search" placeholder="Search pipelines..." oninput="debounceSearch()">
-<div id="list"></div></div>
-<div class="modal-bg" id="modal" style="display:none" onclick="if(event.target===this)hideModal()"><div class="modal"><h2 id="mt">New Pipeline</h2>
-<label class="fl">Name</label><input type="text" id="f-name" placeholder="Name"><label class="fl">Source</label><input type="text" id="f-source" placeholder="Source"><label class="fl">Destination</label><input type="text" id="f-destination" placeholder="Destination"><label class="fl">Steps</label><input type="text" id="f-steps" placeholder="Steps"><label class="fl">Schedule</label><input type="text" id="f-schedule" placeholder="Schedule"><label class="fl">Status</label><input type="text" id="f-status" placeholder="Status"><label class="fl">Last Run At</label><input type="text" id="f-last_run_at" placeholder="Last Run At"><label class="fl">Run Count</label><input type="number" id="f-run_count" placeholder="Run Count"><label class="fl">Fail Count</label><input type="number" id="f-fail_count" placeholder="Fail Count">
-<div style="margin-top:1rem;display:flex;gap:.5rem"><button class="btn btn-p" onclick="save()">Save</button><button class="btn" style="color:var(--cm);border-color:var(--bg3)" onclick="hideModal()">Cancel</button></div></div></div>
+
+func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(dashHTML))
+}
+
+const dashHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Windmill</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#1a1410;--bg2:#241e18;--bg3:#2e261e;--rust:#e8753a;--leather:#a0845c;--cream:#f0e6d3;--cd:#bfb5a3;--cm:#7a7060;--gold:#d4a843;--green:#4a9e5c;--red:#c94444;--mono:'JetBrains Mono',monospace}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--cream);font-family:var(--mono);line-height:1.5}
+.hdr{padding:1rem 1.5rem;border-bottom:1px solid var(--bg3);display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap}
+.hdr h1{font-size:.9rem;letter-spacing:2px}
+.hdr h1 span{color:var(--rust)}
+.main{padding:1.5rem;max-width:960px;margin:0 auto}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.5rem;margin-bottom:1rem}
+.st{background:var(--bg2);border:1px solid var(--bg3);padding:.7rem;text-align:center}
+.st-v{font-size:1.3rem;font-weight:700;color:var(--gold)}
+.st-l{font-size:.5rem;color:var(--cm);text-transform:uppercase;letter-spacing:1px;margin-top:.2rem}
+.toolbar{display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center}
+.search{flex:1;min-width:180px;padding:.4rem .6rem;background:var(--bg2);border:1px solid var(--bg3);color:var(--cream);font-family:var(--mono);font-size:.7rem}
+.search:focus{outline:none;border-color:var(--leather)}
+.count-label{font-size:.6rem;color:var(--cm);margin-bottom:.5rem}
+.item{background:var(--bg2);border:1px solid var(--bg3);padding:.8rem 1rem;margin-bottom:.5rem;transition:border-color .2s}
+.item:hover{border-color:var(--leather)}
+.item-top{display:flex;justify-content:space-between;align-items:flex-start;gap:.8rem}
+.item-title{font-size:.85rem;font-weight:700;flex:1}
+.item-meta{font-size:.55rem;color:var(--cm);margin-top:.3rem;display:flex;gap:.6rem;flex-wrap:wrap}
+.item-meta-sep{color:var(--bg3)}
+.item-actions{display:flex;gap:.3rem;flex-shrink:0;margin-left:.5rem}
+.item-extra{font-size:.58rem;color:var(--cd);margin-top:.4rem;padding-top:.35rem;border-top:1px dashed var(--bg3);display:flex;flex-direction:column;gap:.15rem}
+.item-extra-row{display:flex;gap:.4rem}
+.item-extra-label{color:var(--cm);text-transform:uppercase;letter-spacing:.5px;min-width:90px}
+.item-extra-val{color:var(--cream)}
+.btn{font-size:.6rem;padding:.25rem .5rem;cursor:pointer;border:1px solid var(--bg3);background:var(--bg);color:var(--cd);transition:all .2s;font-family:var(--mono)}
+.btn:hover{border-color:var(--leather);color:var(--cream)}
+.btn-p{background:var(--rust);border-color:var(--rust);color:#fff}
+.btn-sm{font-size:.55rem;padding:.2rem .4rem}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:100;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--bg3);padding:1.5rem;width:480px;max-width:92vw;max-height:90vh;overflow-y:auto}
+.modal h2{font-size:.8rem;margin-bottom:1rem;color:var(--rust);letter-spacing:1px}
+.fr{margin-bottom:.6rem}
+.fr label{display:block;font-size:.55rem;color:var(--cm);text-transform:uppercase;letter-spacing:1px;margin-bottom:.2rem}
+.fr input,.fr select,.fr textarea{width:100%;padding:.4rem .5rem;background:var(--bg);border:1px solid var(--bg3);color:var(--cream);font-family:var(--mono);font-size:.7rem}
+.fr input:focus,.fr select:focus,.fr textarea:focus{outline:none;border-color:var(--leather)}
+.fr-checkbox{display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem}
+.fr-checkbox input{width:auto;margin:0}
+.fr-checkbox label{display:inline;font-size:.65rem;color:var(--cd);text-transform:none;letter-spacing:0;margin:0}
+.fr-section{margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--bg3)}
+.fr-section-label{font-size:.55rem;color:var(--rust);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.acts{display:flex;gap:.4rem;justify-content:flex-end;margin-top:1rem}
+.empty{text-align:center;padding:3rem;color:var(--cm);font-style:italic;font-size:.85rem}
+@media(max-width:600px){.row2{grid-template-columns:1fr}.toolbar{flex-direction:column;align-items:stretch}.search{min-width:100%}}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+<h1 id="dash-title"><span>&#9670;</span> WINDMILL</h1>
+<button class="btn btn-p" onclick="openForm()">+ New</button>
+</div>
+
+<div class="main">
+<div class="stats" id="stats"></div>
+<div class="toolbar">
+<input class="search" id="search" placeholder="Search..." oninput="render()">
+</div>
+<div class="count-label" id="count"></div>
+<div id="list"></div>
+</div>
+
+<div class="modal-bg" id="mbg" onclick="if(event.target===this)closeModal()">
+<div class="modal" id="mdl"></div>
+</div>
+
 <script>
-const API="/api/pipelines";let editId=null,timer=null,curFilter="";
-function stc(s){return{"active":"#4a9e5c","open":"#4a9e5c","available":"#4a9e5c","growing":"#4a9e5c","done":"#4a9e5c","completed":"#4a9e5c","published":"#4a9e5c","resolved":"#4a9e5c","decided":"#4a9e5c","closed_won":"#4a9e5c","converted":"#4a9e5c","live":"#4a9e5c","applied":"#4a9e5c","sent":"#4a9e5c","approved":"#4a9e5c","booked":"#d4a843","in_progress":"#d4a843","processing":"#d4a843","reading":"#d4a843","investigating":"#d4a843","identified":"#d4a843","monitoring":"#d4a843","deploying":"#d4a843","qualified":"#d4a843","proposal":"#d4a843","negotiation":"#d4a843","assigned":"#d4a843","contacted":"#d4a843","pending":"#a0845c","draft":"#a0845c","unread":"#a0845c","new":"#a0845c","lead":"#a0845c","planning":"#a0845c","proposed":"#a0845c","trial":"#a0845c","failed":"#c45d2c","closed":"#7a7060","archived":"#7a7060","inactive":"#7a7060","closed_lost":"#c45d2c","churned":"#c45d2c","declined":"#c45d2c","rejected":"#c45d2c","rolled_back":"#c45d2c","superseded":"#7a7060","dormant":"#7a7060","paused":"#7a7060","stalled":"#c45d2c","away":"#a0845c","busy":"#c45d2c","offline":"#7a7060","dnd":"#c45d2c","bronze":"#a0845c","silver":"#bfb5a3","gold":"#d4a843","platinum":"#f0e6d3"}[s]||"#7a7060"}
-function showModal(id){editId=id||null;document.getElementById("mt").textContent=id?"Edit":"New";if(id){fetch(API+"/"+id).then(r=>r.json()).then(e=>{document.getElementById("f-name").value=e.name||"";document.getElementById("f-source").value=e.source||"";document.getElementById("f-destination").value=e.destination||"";document.getElementById("f-steps").value=e.steps||"";document.getElementById("f-schedule").value=e.schedule||"";document.getElementById("f-status").value=e.status||"";document.getElementById("f-last_run_at").value=e.last_run_at||"";document.getElementById("f-run_count").value=e.run_count||"";document.getElementById("f-fail_count").value=e.fail_count||"";})}else{document.getElementById("f-name").value="";document.getElementById("f-source").value="";document.getElementById("f-destination").value="";document.getElementById("f-steps").value="";document.getElementById("f-schedule").value="";document.getElementById("f-status").value="";document.getElementById("f-last_run_at").value="";document.getElementById("f-run_count").value="";document.getElementById("f-fail_count").value=""}document.getElementById("modal").style.display="flex"}
-function hideModal(){document.getElementById("modal").style.display="none";editId=null}
-function debounceSearch(){clearTimeout(timer);timer=setTimeout(load,300)}
-function filterBy(v){curFilter=v;load()}
-async function loadStats(){const r=await fetch("/api/stats");const d=await r.json();const el=document.getElementById("stats");let h='<div class="stat"><div class="stat-n">'+d.total+'</div><div class="stat-l">Total</div></div>';if(d.by_status){for(const[k,v]of Object.entries(d.by_status)){h+='<div class="stat"><div class="stat-n" style="color:'+stc(k)+'">'+v+'</div><div class="stat-l">'+k.replace(/_/g," ")+'</div></div>'}};el.innerHTML=h}
-async function load(){let url=API;const q=document.getElementById("search").value;const p=[];if(q)p.push("q="+encodeURIComponent(q));if(curFilter)p.push("status="+curFilter);if(p.length)url+="?"+p.join("&");const r=await fetch(url);const d=await r.json();const items=d.pipelines||[];const el=document.getElementById("list");if(!items.length){el.innerHTML='<div class="empty">No pipelines yet</div>';loadStats();return}
-el.innerHTML=items.map(e=>{return '<div class="item" ondblclick="showModal(\''+e.id+'\')"><span class="del" onclick="event.stopPropagation();del(\''+e.id+'\')">x</span><h3>'+e.name+'</h3><div class="item-meta"><span>${e.source||"\u2014"}</span><span>${e.destination||"\u2014"}</span><span>${e.steps||"\u2014"}</span><span>${e.schedule||"\u2014"}</span></div></div>'}).join("");loadStats()}
-async function save(){const body={"name":document.getElementById("f-name").value,"source":document.getElementById("f-source").value,"destination":document.getElementById("f-destination").value,"steps":document.getElementById("f-steps").value,"schedule":document.getElementById("f-schedule").value,"status":document.getElementById("f-status").value,"last_run_at":document.getElementById("f-last_run_at").value,"run_count":parseInt(document.getElementById("f-run_count").value)||0,"fail_count":parseInt(document.getElementById("f-fail_count").value)||0};const method=editId?"PUT":"POST";const url=editId?API+"/"+editId:API;await fetch(url,{method,headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});hideModal();load()}
-async function del(id){await fetch(API+"/"+id,{method:"DELETE"});load()}
-load();loadStats()
-fetch('/api/tier').then(r=>r.json()).then(j=>{if(j.tier==='free'){var b=document.getElementById('upgrade-banner');if(b)b.style.display='block'}}).catch(()=>{var b=document.getElementById('upgrade-banner');if(b)b.style.display='block'});
-</script></body></html>`
+var A='/api';
+var RESOURCE='pipelines';
+var TITLE_FIELD='name';
+
+var fields=[{"name": "id", "label": "Id", "type": "text"}, {"name": "name", "label": "Name", "type": "text"}, {"name": "source", "label": "Source", "type": "text"}, {"name": "destination", "label": "Destination", "type": "text"}, {"name": "steps", "label": "Steps", "type": "text"}, {"name": "schedule", "label": "Schedule", "type": "text"}, {"name": "status", "label": "Status", "type": "text"}, {"name": "last_run_at", "label": "Last Run At", "type": "text"}, {"name": "run_count", "label": "Run Count", "type": "integer"}, {"name": "fail_count", "label": "Fail Count", "type": "integer"}, {"name": "created_at", "label": "Created At", "type": "text"}];
+
+var items=[],editId=null;
+
+function fmtMoney(cents){
+var n=parseInt(cents||0,10);
+if(isNaN(n))return'$0.00';
+var sign=n<0?'-':'';
+n=Math.abs(n);
+return sign+'$'+(n/100).toFixed(2);
+}
+
+function parseMoney(str){
+if(!str)return 0;
+var s=String(str).replace(/[^0-9.\-]/g,'');
+if(!s)return 0;
+var n=parseFloat(s);
+if(isNaN(n))return 0;
+return Math.round(n*100);
+}
+
+function fmtDate(s){
+if(!s)return'';
+try{
+var d=new Date(s);
+if(isNaN(d.getTime()))return s;
+return d.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
+}catch(e){return s}
+}
+
+async function load(){
+try{
+var r=await fetch(A+'/'+RESOURCE).then(function(r){return r.json()});
+var list=r[RESOURCE]||[];
+try{
+var extras=await fetch(A+'/extras/'+RESOURCE).then(function(r){return r.json()});
+list.forEach(function(it){
+var ex=extras[it.id];
+if(!ex)return;
+Object.keys(ex).forEach(function(k){if(it[k]===undefined)it[k]=ex[k]});
+});
+}catch(e){}
+items=list;
+}catch(e){
+console.error('load failed',e);
+items=[];
+}
+renderStats();
+render();
+}
+
+function renderStats(){
+var total=items.length;
+document.getElementById('stats').innerHTML=
+'<div class="st"><div class="st-v">'+total+'</div><div class="st-l">Total</div></div>';
+}
+
+function render(){
+var q=(document.getElementById('search').value||'').toLowerCase();
+var f=items;
+if(q){
+f=f.filter(function(i){
+return Object.keys(i).some(function(k){
+var v=i[k];
+return v!==null&&v!==undefined&&String(v).toLowerCase().includes(q);
+});
+});
+}
+document.getElementById('count').textContent=f.length+' item'+(f.length!==1?'s':'');
+if(!f.length){
+var msg=window._emptyMsg||'No items yet. Click "+ New" to add one.';
+document.getElementById('list').innerHTML='<div class="empty">'+esc(msg)+'</div>';
+return;
+}
+var h='';
+f.forEach(function(i){h+=itemHTML(i)});
+document.getElementById('list').innerHTML=h;
+}
+
+function itemHTML(i){
+var title=i[TITLE_FIELD]||'(untitled)';
+var h='<div class="item"><div class="item-top">';
+h+='<div class="item-title">'+esc(String(title))+'</div>';
+h+='<div class="item-actions">';
+h+='<button class="btn btn-sm" onclick="openEdit(\''+i.id+'\')">Edit</button>';
+h+='<button class="btn btn-sm" onclick="del(\''+i.id+'\')" style="color:var(--red)">&#10005;</button>';
+h+='</div></div>';
+
+// Native field summary on meta line (skip the title field, skip empty)
+var meta=[];
+fields.forEach(function(f){
+if(f.isCustom)return;
+if(f.name===TITLE_FIELD||f.name==='id'||f.name==='created_at')return;
+var v=i[f.name];
+if(v===undefined||v===null||v===''||v===0)return;
+var disp=String(v);
+if(f.type==='money')disp=fmtMoney(v);
+else if(f.type==='date'||f.type==='datetime')disp=fmtDate(v);
+else if(disp.length>30)disp=disp.substring(0,30)+'…';
+meta.push('<span><strong style="color:var(--cd)">'+esc(f.label)+':</strong> '+esc(disp)+'</span>');
+});
+if(i.created_at)meta.push('<span style="color:var(--cm)">'+esc(fmtDate(i.created_at))+'</span>');
+if(meta.length){
+h+='<div class="item-meta">'+meta.join('<span class="item-meta-sep">·</span>')+'</div>';
+}
+
+// Custom fields from personalization
+var customRows='';
+fields.forEach(function(f){
+if(!f.isCustom)return;
+var v=i[f.name];
+if(v===undefined||v===null||v==='')return;
+customRows+='<div class="item-extra-row">';
+customRows+='<span class="item-extra-label">'+esc(f.label)+'</span>';
+customRows+='<span class="item-extra-val">'+esc(String(v))+'</span>';
+customRows+='</div>';
+});
+if(customRows)h+='<div class="item-extra">'+customRows+'</div>';
+
+h+='</div>';
+return h;
+}
+
+function fieldByName(n){
+for(var i=0;i<fields.length;i++)if(fields[i].name===n)return fields[i];
+return null;
+}
+
+function fieldHTML(f,value){
+var v=value;
+if(v===undefined||v===null)v='';
+var req=f.required?' *':'';
+
+if(f.type==='checkbox'){
+return '<div class="fr-checkbox"><input type="checkbox" id="f-'+f.name+'"'+(v?' checked':'')+'><label for="f-'+f.name+'">'+esc(f.label)+'</label></div>';
+}
+
+var h='<div class="fr"><label>'+esc(f.label)+req+'</label>';
+
+if(f.type==='select'){
+h+='<select id="f-'+f.name+'">';
+if(!f.required)h+='<option value="">Select...</option>';
+(f.options||[]).forEach(function(o){
+var sel=(String(v)===String(o))?' selected':'';
+var disp=(typeof o==='string')?(o.charAt(0).toUpperCase()+o.slice(1)):String(o);
+h+='<option value="'+esc(String(o))+'"'+sel+'>'+esc(disp)+'</option>';
+});
+h+='</select>';
+}else if(f.type==='textarea'){
+h+='<textarea id="f-'+f.name+'" rows="3">'+esc(String(v))+'</textarea>';
+}else if(f.type==='money'){
+var displayVal=v?fmtMoney(v).replace('$',''):'';
+h+='<input type="text" id="f-'+f.name+'" value="'+esc(displayVal)+'" placeholder="0.00">';
+}else if(f.type==='date'){
+h+='<input type="date" id="f-'+f.name+'" value="'+esc(String(v).substring(0,10))+'">';
+}else if(f.type==='datetime'){
+h+='<input type="datetime-local" id="f-'+f.name+'" value="'+esc(String(v).substring(0,16))+'">';
+}else if(f.type==='number'||f.type==='integer'){
+h+='<input type="number" id="f-'+f.name+'" value="'+esc(String(v))+'">';
+}else{
+h+='<input type="text" id="f-'+f.name+'" value="'+esc(String(v))+'">';
+}
+
+h+='</div>';
+return h;
+}
+
+function formHTML(item){
+var i=item||{};
+var isEdit=!!item;
+var h='<h2>'+(isEdit?'EDIT':'NEW')+'</h2>';
+
+// Native fields first
+var nativeFields=fields.filter(function(f){
+return !f.isCustom&&f.name!=='id'&&f.name!=='created_at';
+});
+nativeFields.forEach(function(f){
+h+=fieldHTML(f,i[f.name]);
+});
+
+// Custom fields injected by personalization
+var customFields=fields.filter(function(f){return f.isCustom});
+if(customFields.length){
+var sectionLabel=window._customSectionLabel||'Additional Details';
+h+='<div class="fr-section"><div class="fr-section-label">'+esc(sectionLabel)+'</div>';
+customFields.forEach(function(f){h+=fieldHTML(f,i[f.name])});
+h+='</div>';
+}
+
+h+='<div class="acts">';
+h+='<button class="btn" onclick="closeModal()">Cancel</button>';
+h+='<button class="btn btn-p" onclick="submit()">'+(isEdit?'Save':'Create')+'</button>';
+h+='</div>';
+return h;
+}
+
+function openForm(){
+editId=null;
+document.getElementById('mdl').innerHTML=formHTML();
+document.getElementById('mbg').classList.add('open');
+}
+
+function openEdit(id){
+var x=null;
+for(var j=0;j<items.length;j++){if(items[j].id===id){x=items[j];break}}
+if(!x)return;
+editId=id;
+document.getElementById('mdl').innerHTML=formHTML(x);
+document.getElementById('mbg').classList.add('open');
+}
+
+function closeModal(){
+document.getElementById('mbg').classList.remove('open');
+editId=null;
+}
+
+async function submit(){
+var body={};
+var extras={};
+fields.forEach(function(f){
+if(f.name==='id'||f.name==='created_at')return;
+var el=document.getElementById('f-'+f.name);
+if(!el)return;
+var val;
+if(f.type==='checkbox')val=el.checked?1:0;
+else if(f.type==='money')val=parseMoney(el.value);
+else if(f.type==='number')val=parseFloat(el.value)||0;
+else if(f.type==='integer')val=parseInt(el.value,10)||0;
+else val=el.value;
+if(f.isCustom)extras[f.name]=val;
+else body[f.name]=val;
+});
+
+var savedId=editId;
+try{
+if(editId){
+var r1=await fetch(A+'/'+RESOURCE+'/'+editId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+if(!r1.ok){var e1=await r1.json().catch(function(){return{}});alert(e1.error||'Save failed');return}
+}else{
+var r2=await fetch(A+'/'+RESOURCE,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+if(!r2.ok){var e2=await r2.json().catch(function(){return{}});alert(e2.error||'Save failed');return}
+var created=await r2.json();
+savedId=created.id;
+}
+if(savedId&&Object.keys(extras).length){
+await fetch(A+'/extras/'+RESOURCE+'/'+savedId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(extras)}).catch(function(){});
+}
+}catch(e){
+alert('Network error: '+e.message);
+return;
+}
+
+closeModal();
+load();
+}
+
+async function del(id){
+if(!confirm('Delete this item?'))return;
+await fetch(A+'/'+RESOURCE+'/'+id,{method:'DELETE'});
+load();
+}
+
+function esc(s){
+if(s===undefined||s===null)return'';
+var d=document.createElement('div');
+d.textContent=String(s);
+return d.innerHTML;
+}
+
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal()});
+
+(function loadPersonalization(){
+fetch('/api/config').then(function(r){return r.json()}).then(function(cfg){
+if(!cfg||typeof cfg!=='object')return;
+
+if(cfg.dashboard_title){
+var h1=document.getElementById('dash-title');
+if(h1)h1.innerHTML='<span>&#9670;</span> '+esc(cfg.dashboard_title);
+document.title=cfg.dashboard_title;
+}
+
+if(cfg.empty_state_message)window._emptyMsg=cfg.empty_state_message;
+if(cfg.primary_label)window._customSectionLabel=cfg.primary_label+' Details';
+
+if(Array.isArray(cfg.custom_fields)){
+cfg.custom_fields.forEach(function(cf){
+if(!cf||!cf.name||!cf.label)return;
+if(fieldByName(cf.name))return;
+fields.push({
+name:cf.name,
+label:cf.label,
+type:cf.type||'text',
+options:cf.options||[],
+isCustom:true
+});
+});
+}
+}).catch(function(){
+}).finally(function(){
+load();
+});
+})();
+</script>
+</body>
+</html>` + ""
